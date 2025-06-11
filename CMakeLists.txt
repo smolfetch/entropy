@@ -14,7 +14,9 @@ set(params
     -Wno-reorder
 )
 
-option(ENTROPY_BUILD_EXAMPLES "Build examples" OFF)
+string(TOUPPER ${project_name} project_name_upper)
+option(${project_name_upper}_BUILD_EXAMPLES "Build examples" OFF)
+option(${project_name_upper}_ENABLE_TESTS "Enable tests" OFF)
 include(FetchContent)
 
 # --------------------------------------------------------------------------------------------------
@@ -60,10 +62,8 @@ export(EXPORT ${project_name}Targets
 
 
 # --------------------------------------------------------------------------------------------------
-if(ENTROPY_BUILD_EXAMPLES)
-  set(exe
-    examples/main.cpp
-  )
+if(${project_name_upper}_BUILD_EXAMPLES)
+  file(GLOB exe examples/*.cpp)
   # ----------------------------------------------
   set(exec_names)
   foreach(src_file IN LISTS exe)
@@ -89,4 +89,27 @@ if(ENTROPY_BUILD_EXAMPLES)
     ${exec_names}
     DESTINATION lib/${PROJECT_NAME}
   )
+endif()
+
+
+# --------------------------------------------------------------------------------------------------
+if(${project_name_upper}_ENABLE_TESTS)
+  enable_testing()
+  add_definitions(-DENABLE_DOCTEST_IN_LIBRARY)
+  include(FetchContent)
+  FetchContent_Declare(DocTest GIT_REPOSITORY "https://github.com/onqtam/doctest")
+  FetchContent_MakeAvailable(DocTest)
+
+  file(GLOB test_src test/*.cpp)
+
+  foreach(src_file IN LISTS test_src)
+    get_filename_component(test_name "${src_file}" NAME_WE)
+    add_executable(${test_name} "${src_file}")
+      foreach(lib_file IN LISTS internal_deps)
+        target_compile_options(${test_name} PRIVATE ${params})
+        target_sources(${test_name} PRIVATE "${lib_file}")
+      endforeach()
+    target_link_libraries(${test_name} ${ext_deps} doctest_with_main)
+    add_test(NAME ${test_name} COMMAND ${test_name})
+  endforeach()
 endif()
